@@ -1,0 +1,5 @@
+pexpect>=4.8.0
+requests>=2.25.0
+paho-mqtt>=1.5.1
+PyYAML>=5.4.1
+bleak>=0.12.1

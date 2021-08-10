@@ -1,0 +1,19 @@
+{
+  "name": "screen-ws13",
+  "version": "1.0.0",
+  "description": "An Odo module to display credentials on a waveshare 1.3in LCD",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@bettse/ws13lcd": "^2.1.0",
+    "debug": "^4.3.1",
+    "mqtt": "^4.2.8",
+    "pigpio": "^3.3.1",
+    "ws": "^7.4.5",
+    "yaml": "^1.10.2"
+  },
+  "author": "",
+  "license": ""
+}
