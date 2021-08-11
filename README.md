@@ -1,5 +1,7 @@
 # Odo
 
+![Odo Pi](https://github.com/Red-Team-Alliance/Odo/blob/main/docs/odo.jpg?raw=true)
+
 ## **Requirements**
 
 - python3 (>= 3.9 for Lovense module)
@@ -89,3 +91,7 @@ sudo setcap "cap_dac_override+ep cap_sys_rawio+ep" $(eval readlink -f `which nod
 - `cd screen_ws13`
 - `node index.js`
 
+
+# Contributing
+
+See our contributers guide [here](docs/CONTRIBUTING.md)
