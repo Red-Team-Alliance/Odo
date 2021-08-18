@@ -16,6 +16,15 @@ from odo.models import BaseMqttDeviceModel
 from .models import LovenseStateModel
 from .patterns import *
 
+# Linux
+logging.getLogger("bleak.backends.bluezdbus.client").setLevel(logging.WARNING)
+logging.getLogger("bleak.backends.bluezdbus.scanner").setLevel(logging.WARNING)
+
+# MacOS
+logging.getLogger("bleak.backends.corebluetooth.client").setLevel(logging.WARNING)
+logging.getLogger("bleak.backends.corebluetooth.PeripheralDelegate").setLevel(logging.WARNING)
+logging.getLogger("bleak.backends.corebluetooth.CentralManagerDelegate").setLevel(logging.WARNING)
+
 class Lovense(BaseMqttDeviceModel):
     def __init__(self, events=event_patterns, default_pattern=foho, *args, **kwargs):
         super(Lovense, self).__init__(*args, **kwargs)
