@@ -81,6 +81,7 @@ class Lovense(BaseMqttDeviceModel):
             for vibe, duration in pattern:
                 await self.write_cmd(vibe)
                 sleep(duration)
+            await self.write_cmd(vibe_off)
         except Exception as e:
             self.logger.error(e)
         finally:
@@ -148,6 +149,7 @@ class Lovense(BaseMqttDeviceModel):
                 await self.client.start_notify(rx_char_uuid, self.ble_callback)
                 await self.write_cmd("DeviceType;")
                 await self.write_cmd("GetBatch;")
+                await self.vibe_pattern(foho)
                 await asyncio.sleep(1)
             except Exception as e:
                 self.logger.error(e)
