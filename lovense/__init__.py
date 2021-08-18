@@ -33,6 +33,7 @@ class Lovense(BaseMqttDeviceModel):
         self.queue = asyncio.Queue()
         self.client = None
         self.restart = True
+        self.vibrating = False # Poor man's semaphore
         self._event = None
         self.state = LovenseStateModel()
         self.event_patterns = event_patterns
@@ -76,11 +77,14 @@ class Lovense(BaseMqttDeviceModel):
 
     async def vibe_pattern(self, pattern):
         try:
+            self.vibrating = True
             for vibe, duration in pattern:
                 await self.write_cmd(vibe)
                 sleep(duration)
         except Exception as e:
             self.logger.error(e)
+        finally:
+            self.vibrating = False
 
     async def write_cmd(self, data):
         self.logger.debug(f"BLE Send: {data}")
@@ -168,12 +172,12 @@ class Lovense(BaseMqttDeviceModel):
 
     async def get_battery(self):
         while True:
-            if (self.state.payload.status == "connected") and (self.state.payload.device_type is not None):
+            if (self.state.payload.status == "connected") and (self.state.payload.device_type is not None) and (self.vibrating is False):
                 await self.write_cmd("Battery;")
                 await asyncio.sleep(10)
             else:
                 await asyncio.sleep(1)
-            
+
 
     async def scanner(self):
         while True:
