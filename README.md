@@ -4,7 +4,7 @@
 
 ## **What is it?**
 
-Odo is a framework for coordinating and automating tools during [red teaming](https://en.wikipedia.org/wiki/Red_team) and other scenarios.  In the case demonstrated at [DefCon 29](https://www.youtube.com/watch?v=NARJrwX_KFY) it automates monitoring an [ESPKey](https://redteamtools.com/espkey) in a weponized reader, cloning the captured credential using a Proxmark3, and alerting the user via haptic at each step in the process.
+Odo is a framework for coordinating and automating tools during [red teaming](https://en.wikipedia.org/wiki/Red_team) and other scenarios.  In the case demonstrated at [DefCon 29](https://www.youtube.com/watch?v=NARJrwX_KFY) it automates monitoring an [ESPKey](https://redteamtools.com/espkey) in a weaponized reader, cloning the captured credential using a Proxmark3, and alerting the user via haptic at each step in the process.
 
 ## **Requirements**
 
