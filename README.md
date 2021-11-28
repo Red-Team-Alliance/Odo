@@ -2,6 +2,10 @@
 
 ![Odo Pi](https://github.com/Red-Team-Alliance/Odo/blob/main/docs/odo.jpg?raw=true)
 
+## **What is it?**
+
+Odo is a framework for coordinating and automating tools during [red teaming](https://en.wikipedia.org/wiki/Red_team) and other scenarios.  In the case demonstrated at [DefCon 29](https://www.youtube.com/watch?v=NARJrwX_KFY) it automates monitoring an [ESPKey](https://redteamtools.com/espkey) in a weaponized reader, cloning the captured credential using a Proxmark3, and alerting the user via haptic at each step in the process.
+
 ## **Requirements**
 
 - python3 (>= 3.9 for Lovense module)
