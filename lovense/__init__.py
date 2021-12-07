@@ -16,6 +16,15 @@ from odo.models import BaseMqttDeviceModel
 from .models import LovenseStateModel
 from .patterns import *
 
+# Linux
+logging.getLogger("bleak.backends.bluezdbus.client").setLevel(logging.WARNING)
+logging.getLogger("bleak.backends.bluezdbus.scanner").setLevel(logging.WARNING)
+
+# MacOS
+logging.getLogger("bleak.backends.corebluetooth.client").setLevel(logging.WARNING)
+logging.getLogger("bleak.backends.corebluetooth.PeripheralDelegate").setLevel(logging.WARNING)
+logging.getLogger("bleak.backends.corebluetooth.CentralManagerDelegate").setLevel(logging.WARNING)
+
 class Lovense(BaseMqttDeviceModel):
     def __init__(self, events=event_patterns, default_pattern=foho, *args, **kwargs):
         super(Lovense, self).__init__(*args, **kwargs)
@@ -24,6 +33,7 @@ class Lovense(BaseMqttDeviceModel):
         self.queue = asyncio.Queue()
         self.client = None
         self.restart = True
+        self.vibrating = False # Poor man's semaphore
         self._event = None
         self.state = LovenseStateModel()
         self.event_patterns = event_patterns
@@ -67,11 +77,15 @@ class Lovense(BaseMqttDeviceModel):
 
     async def vibe_pattern(self, pattern):
         try:
+            self.vibrating = True
             for vibe, duration in pattern:
                 await self.write_cmd(vibe)
                 sleep(duration)
+            await self.write_cmd(vibe_off)
         except Exception as e:
             self.logger.error(e)
+        finally:
+            self.vibrating = False
 
     async def write_cmd(self, data):
         self.logger.debug(f"BLE Send: {data}")
@@ -135,6 +149,7 @@ class Lovense(BaseMqttDeviceModel):
                 await self.client.start_notify(rx_char_uuid, self.ble_callback)
                 await self.write_cmd("DeviceType;")
                 await self.write_cmd("GetBatch;")
+                await self.vibe_pattern(foho)
                 await asyncio.sleep(1)
             except Exception as e:
                 self.logger.error(e)
@@ -159,12 +174,12 @@ class Lovense(BaseMqttDeviceModel):
 
     async def get_battery(self):
         while True:
-            if (self.state.payload.status == "connected") and (self.state.payload.device_type is not None):
+            if (self.state.payload.status == "connected") and (self.state.payload.device_type is not None) and (self.vibrating is False):
                 await self.write_cmd("Battery;")
                 await asyncio.sleep(10)
             else:
                 await asyncio.sleep(1)
-            
+
 
     async def scanner(self):
         while True:
