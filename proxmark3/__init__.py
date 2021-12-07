@@ -189,23 +189,35 @@ class Proxmark3(BaseMqttDeviceModel):
         resp = self._send_command(command, 'pm3 --> ')
         self.logger.debug(f"<- {resp}")
 
-        # Check credential write
-        command = f"lf hid reader"
-        self.logger.debug(f"-> {command}")
-        resp = self._send_command(command, 'pm3 --> ')
-        self.logger.debug(f"<- {resp}")
-        
-        # Validate response
-        match = re.search(prox_regex, resp, re.MULTILINE)
-        if match:
-            current_cred = match.group(1).lstrip('0').strip()
-            self.logger.debug(f"Target cred: {preamble_cred} Actual cred: {current_cred}")
-            if preamble_cred == current_cred:
-                self.logger.info(f"Credential: {credential} Written successfully")
-                status_msg["payload"]["status"] = "success"
+
+        retry = 3
+
+        while True:
+            # Check credential write
+            command = f"lf hid reader"
+            self.logger.debug(f"-> {command}")
+            resp = self._send_command(command, 'pm3 --> ')
+            self.logger.debug(f"<- {resp}")
+            
+            # Validate response
+            match = re.search(prox_regex, resp, re.MULTILINE)
+            if match:
+                current_cred = match.group(1).lstrip('0').strip()
+                self.logger.debug(f"Target cred: {preamble_cred} Actual cred: {current_cred}")
+                if preamble_cred == current_cred:
+                    self.logger.info(f"Credential: {credential} Written successfully")
+                    status_msg["payload"]["status"] = "success"
+                else:
+                    self.logger.error(f"Target cred not cloned successfully")
+                    status_msg["payload"]["status"] = "failure"
             else:
-                self.logger.error(f"Target cred not cloned successfully")
-                status_msg["payload"]["status"] = "failure"
+                if retry == 0:
+                    self.logger.error(f"Retries exceeded, target cred not cloned successfully")
+                    status_msg["payload"]["status"] = "failure"
+                    break
+                else:
+                    retry -= 1
+                    self.logger.info(f"Retrying to validate write ({retry})")
 
         self.mqtt_client.publish(self.credential_topic["written"], json.dumps(status_msg))
 
