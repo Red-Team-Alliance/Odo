@@ -141,7 +141,7 @@ class Lovense(BaseMqttDeviceModel):
 
     async def connect_to_device(self, address):
         self.logger.info(f"Starting loop for {address}")
-        async with BleakClient(address, loop=self.event_loop, timeout=30) as self.client:
+        async with BleakClient(address, loop=self.event_loop, timeout=60) as self.client:
             self.logger.info(f"Connecting to: {address}")
             self.state.payload.status = "connected"
 

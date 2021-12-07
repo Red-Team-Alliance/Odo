@@ -198,7 +198,7 @@ class Proxmark3(BaseMqttDeviceModel):
         # Validate response
         match = re.search(prox_regex, resp, re.MULTILINE)
         if match:
-            current_cred = match.group(1).lstrip('0')
+            current_cred = match.group(1).lstrip('0').strip()
             self.logger.debug(f"Target cred: {preamble_cred} Actual cred: {current_cred}")
             if preamble_cred == current_cred:
                 self.logger.info(f"Credential: {credential} Written successfully")
