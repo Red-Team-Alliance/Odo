@@ -207,6 +207,7 @@ class Proxmark3(BaseMqttDeviceModel):
                 if preamble_cred == current_cred:
                     self.logger.info(f"Credential: {credential} Written successfully")
                     status_msg["payload"]["status"] = "success"
+                    break
                 else:
                     self.logger.error(f"Target cred not cloned successfully")
                     status_msg["payload"]["status"] = "failure"
