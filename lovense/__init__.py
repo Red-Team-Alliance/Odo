@@ -50,18 +50,27 @@ class Lovense(BaseMqttDeviceModel):
         self.mqtt_client.publish(self.state_topic, self.state.to_json())
 
     def _handle_credential(self, msg=None):
+        self.logger.debug(msg)
         topic = msg.topic.split('/')
+        self.logger.debug(topic)
         pattern = self.default_pattern
-        if topic == self.credential_topic['written']:
+        if msg.topic == self.credential_topic['written']:
+            self.logger.debug("cred written")
             message = json.loads(msg.payload)
+            self.logger.debug(message)
             if "payload" in message:
-                if "status" in message:
+                if "status" in message["payload"]:
                     status = message["payload"]["status"]
-                    pattern = self.event_patterns[topic[1]][status]
-        if topic[1] in self.event_patterns:
+                    self.logger.debug(status)
+                    if status in self.event_patterns[topic[1]]:
+                        pattern = self.event_patterns[topic[1]][status]
+                    else:
+                        pattern = None
+        elif topic[1] in self.event_patterns:
             pattern = self.event_patterns[topic[1]]
 
-        self.event_loop.create_task(self.vibe_pattern(pattern))
+        if pattern is not None:
+            self.event_loop.create_task(self.vibe_pattern(pattern))
 
     def _handle_command(self, msg=None):
         # message = json.loads(msg.payload)
@@ -133,7 +142,7 @@ class Lovense(BaseMqttDeviceModel):
         self.logger.debug(f"BLE Recv: {sender}: {response}")
         if response.endswith(";"):
             self.event_loop.create_task(self.process_ble_response(response))
-    
+
     async def ble_disconnect(self):
         await self.client.stop_notify(rx_char_uuid)
         await self.client.disconnect()
@@ -141,26 +150,29 @@ class Lovense(BaseMqttDeviceModel):
 
     async def connect_to_device(self, address):
         self.logger.info(f"Starting loop for {address}")
-        async with BleakClient(address, loop=self.event_loop, timeout=60) as self.client:
-            self.logger.info(f"Connecting to: {address}")
-            self.state.payload.status = "connected"
+        try:
+            async with BleakClient(address, loop=self.event_loop, timeout=60) as self.client:
+                self.logger.info(f"Connecting to: {address}")
+                self.state.payload.status = "connected"
 
-            try:
-                await self.client.start_notify(rx_char_uuid, self.ble_callback)
-                await self.write_cmd("DeviceType;")
-                await self.write_cmd("GetBatch;")
-                await self.vibe_pattern(foho)
-                await asyncio.sleep(1)
-            except Exception as e:
-                self.logger.error(e)
-                raise e
+                try:
+                    await self.client.start_notify(rx_char_uuid, self.ble_callback)
+                    await self.write_cmd("DeviceType;")
+                    await self.write_cmd("GetBatch;")
+                    await self.vibe_pattern(foho)
+                    await asyncio.sleep(1)
+                except Exception as e:
+                    self.logger.error(e)
+                    raise e
 
-            self._send_state()
-            self._event = asyncio.Event()
+                self._send_state()
+                self._event = asyncio.Event()
 
-            await self._event.wait()
+                await self._event.wait()
 
-            await self.ble_disconnect()
+                await self.ble_disconnect()
+        except Exception as e:
+            self.logger.error("Error connecting")
 
         self.logger.info(f"Disconnect from: {address}")
 
@@ -250,4 +262,3 @@ class Lovense(BaseMqttDeviceModel):
         asyncio.set_event_loop(self.event_loop)
         self.event_loop.run_until_complete(self.scanner())
         self.event_loop.close()
-
