@@ -3,11 +3,14 @@ import sys
 import json
 import logging
 from time import sleep
+import re
 
 from odo.models import BaseMqttDeviceModel
 from proxmark3.models import Proxmark3StateModel
 from espkey.models import ESPKeyCredential
 from .helpers import escape_ansi
+
+prox_regex = "^\[\=\]\sraw:\s*(.+)"
 
 modes = {
     "auto": ["auto", "seen"],
@@ -16,7 +19,7 @@ modes = {
 }
 
 class Proxmark3(BaseMqttDeviceModel):
-    def __init__(self, port=None, client_timeout=10, client_retry=True, mode="seen", *args, **kwargs):
+    def __init__(self, port=None, client_timeout=10, client_retry=True, mode="seen", target="iclass", *args, **kwargs):
         super(Proxmark3, self).__init__(*args, **kwargs)
         self.logger = logging.getLogger('odo.proxmark3.Proxmark3')
         self.port = port
@@ -24,7 +27,7 @@ class Proxmark3(BaseMqttDeviceModel):
         self.client_timeout = client_timeout
         self.client_retry = client_retry
         self._retry_client = True
-        self.state = Proxmark3StateModel()
+        self.state = Proxmark3StateModel(target=target)
         self._subscribe_topics = [
             self.credential_topic["seen"],
             self.credential_topic["selected"],
@@ -94,6 +97,8 @@ class Proxmark3(BaseMqttDeviceModel):
         if message["type"] == "set":
             if "mode" in message["payload"]:
                 self._change_mode(mode=message["payload"]["mode"])
+            if "target" in message["payload"]:
+                self.state.payload.target = message["payload"]["target"]
         else:
             self.logger.error("Command type not implemented")
 
@@ -116,6 +121,8 @@ class Proxmark3(BaseMqttDeviceModel):
 
                 if self.target == "iclass":
                     self.encode_iclass(credential=credential)
+                elif self.target == "prox":
+                    self.encode_prox(credential=credential)
                 else:
                     raise NotImplementedError
 
@@ -166,6 +173,41 @@ class Proxmark3(BaseMqttDeviceModel):
                     self.logger.error(f"Error writing block {i+6}")
 
         self.mqtt_client.publish(self.credential_topic["written"], json.dumps(status_msg))
+
+    def encode_prox(self, credential=ESPKeyCredential()):
+        preamble_cred = credential.to_hex(preamble=True)
+        self.logger.info(f"{credential} Bin: {credential.to_binary()} Hex(w/ preamble): {preamble_cred}")
+        status_msg = json.loads(credential.to_json())
+
+        status_msg["payload"]["status"] = "pending"
+        self.mqtt_client.publish(self.credential_topic["written"], json.dumps(status_msg))
+        self.mqtt_client.loop()
+
+        command = f"lf hid clone -r {preamble_cred}"
+        self.logger.debug(f"-> {command}")
+        resp = self._send_command(command, 'pm3 --> ')
+        self.logger.debug(f"<- {resp}")
+
+        # Check credential write
+        command = f"lf hid reader"
+        self.logger.debug(f"-> {command}")
+        resp = self._send_command(command, 'pm3 --> ')
+        self.logger.debug(f"<- {resp}")
+        
+        # Validate response
+        match = re.search(prox_regex, resp, re.MULTILINE)
+        if match:
+            current_cred = match.group(1).lstrip('0')
+            self.logger.debug(f"Target cred: {preamble_cred} Actual cred: {current_cred}")
+            if preamble_cred == current_cred:
+                self.logger.info(f"Credential: {credential} Written successfully")
+                status_msg["payload"]["status"] = "success"
+            else:
+                self.logger.error(f"Target cred not cloned successfully")
+                status_msg["payload"]["status"] = "failure"
+
+        self.mqtt_client.publish(self.credential_topic["written"], json.dumps(status_msg))
+
 
     def _cleanup(self):
         if self.client:

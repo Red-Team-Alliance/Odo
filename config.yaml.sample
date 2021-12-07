@@ -1,20 +1,13 @@
 ---
 modules:
   espkey:
-    url: "http://192.168.4.1/"
+    url: "http://espkey.local/"
     log: "log.txt"
-    mqtt_host: "localhost"
   proxmark3:
-    port: /dev/tty.usbmodemiceman1
     client_timeout: 60
     client_retry: True
-    mqtt_host: "localhost"
+    target: "iclass"
   screen_ws13:
-    mqtt_host: "localhost"
-    pisugar2: false
+    pisugar2: True
   lovense:
-    event_patterns:
-      seen: "pattern_long"
-      written_success: "pattern_rising"
-      written_failure: "pattern_falling"
-      
+        

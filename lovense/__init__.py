@@ -227,7 +227,8 @@ class Lovense(BaseMqttDeviceModel):
 
     def _cleanup(self):
         self.restart = False
-        self._event.set()
+        if self._event is not None:
+            self._event.set()
 
     def loop(self):
         self._send_state()
