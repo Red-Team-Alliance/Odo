@@ -27,7 +27,8 @@ class Proxmark3(BaseMqttDeviceModel):
         self.client_timeout = client_timeout
         self.client_retry = client_retry
         self._retry_client = True
-        self.state = Proxmark3StateModel(target=target)
+        self.state = Proxmark3StateModel()
+        self.state.payload.target = target
         self._subscribe_topics = [
             self.credential_topic["seen"],
             self.credential_topic["selected"],
