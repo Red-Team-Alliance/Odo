@@ -29,7 +29,7 @@ class WiegandCredential(MqttApiModel):
 
     def _prox_preamble(self):
         t = int()
-        bitnum = self.payloaad.bits
+        bitnum = self.payload.bits
 
         if bitnum < 37:
             t = 1 << 37
