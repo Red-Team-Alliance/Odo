@@ -19,7 +19,7 @@ modes = {
 }
 
 class Proxmark3(BaseMqttDeviceModel):
-    def __init__(self, port=None, client_timeout=10, client_retry=True, mode="seen", target="iclass", *args, **kwargs):
+    def __init__(self, port=None, client_timeout=10, client_retry=True, mode="seen", target="iclass", verify_prox=True, blind_write_attempts=3, *args, **kwargs):
         super(Proxmark3, self).__init__(*args, **kwargs)
         self.logger = logging.getLogger('odo.proxmark3.Proxmark3')
         self.port = port
@@ -27,6 +27,8 @@ class Proxmark3(BaseMqttDeviceModel):
         self.client_timeout = client_timeout
         self.client_retry = client_retry
         self._retry_client = True
+        self.verify_prox = verify_prox
+        self.blind_write_attempts = blind_write_attempts
         self.state = Proxmark3StateModel()
         self.state.payload.target = target
         self._subscribe_topics = [
@@ -184,41 +186,50 @@ class Proxmark3(BaseMqttDeviceModel):
         self.mqtt_client.publish(self.credential_topic["written"], json.dumps(status_msg))
         self.mqtt_client.loop()
 
-        command = f"lf hid clone -r {preamble_cred}"
-        self.logger.debug(f"-> {command}")
-        resp = self._send_command(command, 'pm3 --> ')
-        self.logger.debug(f"<- {resp}")
-
-
-        retry = 3
-
-        while True:
-            # Check credential write
-            command = f"lf hid reader"
+        if not self.verify_prox:
+            retry = self.blind_write_attempts
+        else:
+            retry = 1
+        
+        while retry > 0:
+            retry -= 1
+            command = f"lf hid clone -r {preamble_cred}"
             self.logger.debug(f"-> {command}")
             resp = self._send_command(command, 'pm3 --> ')
             self.logger.debug(f"<- {resp}")
-            
-            # Validate response
-            match = re.search(prox_regex, resp, re.MULTILINE)
-            if match:
-                current_cred = match.group(1).lstrip('0').strip()
-                self.logger.debug(f"Target cred: {preamble_cred} Actual cred: {current_cred}")
-                if preamble_cred == current_cred:
-                    self.logger.info(f"Credential: {credential} Written successfully")
-                    status_msg["payload"]["status"] = "success"
-                    break
+
+        if self.verify_prox:
+            retry = 3
+            while True:
+                # Check credential write
+                command = f"lf hid reader"
+                self.logger.debug(f"-> {command}")
+                resp = self._send_command(command, 'pm3 --> ')
+                self.logger.debug(f"<- {resp}")
+                
+                # Validate response
+                match = re.search(prox_regex, resp, re.MULTILINE)
+                if match:
+                    current_cred = match.group(1).lstrip('0').strip()
+                    self.logger.debug(f"Target cred: {preamble_cred} Actual cred: {current_cred}")
+                    if preamble_cred == current_cred:
+                        self.logger.info(f"Credential: {credential} Written & Verified successfully")
+                        status_msg["payload"]["status"] = "success"
+                        break
+                    else:
+                        self.logger.error(f"Target cred not cloned successfully")
+                        status_msg["payload"]["status"] = "failure"
                 else:
-                    self.logger.error(f"Target cred not cloned successfully")
-                    status_msg["payload"]["status"] = "failure"
-            else:
-                if retry == 0:
-                    self.logger.error(f"Retries exceeded, target cred not cloned successfully")
-                    status_msg["payload"]["status"] = "failure"
-                    break
-                else:
-                    retry -= 1
-                    self.logger.info(f"Retrying to validate write ({retry})")
+                    if retry == 0:
+                        self.logger.error(f"Retries exceeded, target cred not cloned successfully")
+                        status_msg["payload"]["status"] = "failure"
+                        break
+                    else:
+                        retry -= 1
+                        self.logger.info(f"Retrying to validate write ({retry})")
+        else:
+            self.logger.info("Validation disabled, assuming success")
+            status_msg["payload"]["status"] = "success"
 
         self.mqtt_client.publish(self.credential_topic["written"], json.dumps(status_msg))
 

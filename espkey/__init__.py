@@ -22,7 +22,7 @@ class ESPKey(BaseMqttDeviceModel):
         self.poll_interval = poll_interval
         self.state = ESPKeyStateModel()
         self.credentials = []
-        self.latest_credential = 0
+        self.latest_credential = ESPKeyCredential()
     
     def _create_session(self):
         s = requests.Session()
@@ -74,6 +74,9 @@ class ESPKey(BaseMqttDeviceModel):
                 if card.group(1) in self.credentials:
                     continue
                 else:
+                    if card.group(2) == self.latest_credential.payload.hex:
+                        self.logger.info(f"Repeat credential: {card.group(2)}")
+                        continue
                     got_new_credential = True
                     credential = ESPKeyCredential(payload={
                         "bits": int(card.group(3)),
@@ -83,6 +86,7 @@ class ESPKey(BaseMqttDeviceModel):
         
                     self.logger.info(f"New credential from log: {credential}")
                     self.credentials.append(card.group(1))
+                    self.latest_credential = credential
         return got_new_credential, credential
 
     def _cleanup(self):
