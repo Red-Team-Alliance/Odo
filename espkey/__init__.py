@@ -80,16 +80,17 @@ class ESPKey(BaseMqttDeviceModel):
                         "hex": card.group(2),
                         "timestamp": int(card.group(1))
                     })
-        
                     self.logger.info(f"New credential from log: {credential}")
                     self.credentials.append(card.group(1))
-        if self.latest_credential.payload is not None:                    
-            if credential.payload.hex == self.latest_credential.payload.hex:
-                self.logger.info(f"Repeat credential: {card.group(2)}")
-                got_new_credential = False
-        else:
+
+        if credential is not None:
+            if self.latest_credential.payload is not None:
+                if credential.payload.hex == self.latest_credential.payload.hex:
+                    self.logger.info(f"Repeat credential: {card.group(2)}")
+                    got_new_credential = False
+
             self.latest_credential = credential
-        
+
         return got_new_credential, credential
 
     def _cleanup(self):
